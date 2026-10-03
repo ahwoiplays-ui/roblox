@@ -19,7 +19,11 @@ function saveUsers(users) {
 }
 
 function getSession() {
-  return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+  } catch {
+    return null;
+  }
 }
 
 function setSession(user) {
@@ -49,6 +53,7 @@ function setActiveTab(tabName) {
 
 function renderDashboard(user) {
   dashboard.classList.remove("hidden");
+  logoutBtn.classList.remove("hidden");
   document.getElementById("welcomeTitle").textContent = `Welcome, ${user.username}!`;
   document.getElementById("profileUsername").textContent = user.username;
   document.getElementById("profileEmail").textContent = user.email;
@@ -56,6 +61,7 @@ function renderDashboard(user) {
 
   const robloxStatus = document.getElementById("robloxStatus");
   const robloxInput = document.getElementById("robloxInput");
+
   if (user.robloxUsername) {
     robloxStatus.textContent = `Linked Roblox account: @${user.robloxUsername}`;
     robloxInput.value = user.robloxUsername;
@@ -70,21 +76,6 @@ function hideDashboard() {
   logoutBtn.classList.add("hidden");
 }
 
-function storeUserSession(user) {
-  setSession({
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    robloxUsername: user.robloxUsername || "",
-    createdAt: user.createdAt,
-  });
-  renderDashboard({
-    ...user,
-    robloxUsername: user.robloxUsername || "",
-  });
-  logoutBtn.classList.remove("hidden");
-}
-
 function createUser(username, email, password, robloxUsername = "") {
   return {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2),
@@ -96,6 +87,21 @@ function createUser(username, email, password, robloxUsername = "") {
   };
 }
 
+function storeUserSession(user) {
+  setSession({
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    robloxUsername: user.robloxUsername || "",
+    createdAt: user.createdAt,
+  });
+
+  renderDashboard({
+    ...user,
+    robloxUsername: user.robloxUsername || "",
+  });
+}
+
 loginTab.addEventListener("click", () => setActiveTab("loginTab"));
 signupTab.addEventListener("click", () => setActiveTab("signupTab"));
 
@@ -105,7 +111,9 @@ loginForm.addEventListener("submit", (event) => {
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
   const users = getUsers();
-  const user = users.find((entry) => entry.email.toLowerCase() === email.toLowerCase() && entry.password === password);
+  const user = users.find(
+    (entry) => entry.email.toLowerCase() === email.toLowerCase() && entry.password === password
+  );
 
   if (!user) {
     showToast("Invalid email or password.");
@@ -125,6 +133,11 @@ signupForm.addEventListener("submit", (event) => {
   const password = document.getElementById("signupPassword").value;
   const robloxUsername = document.getElementById("signupRoblox").value.trim();
 
+  if (!username || !email || !password) {
+    showToast("Please fill in all required fields.");
+    return;
+  }
+
   const users = getUsers();
   if (users.some((user) => user.email.toLowerCase() === email.toLowerCase())) {
     showToast("An account with that email already exists.");
@@ -139,6 +152,7 @@ signupForm.addEventListener("submit", (event) => {
   const nextUser = createUser(username, email, password, robloxUsername);
   users.push(nextUser);
   saveUsers(users);
+
   signupForm.reset();
   setActiveTab("loginTab");
   showToast("Account created successfully.");
@@ -157,8 +171,8 @@ document.getElementById("linkRobloxBtn").addEventListener("click", () => {
     return;
   }
 
-  const username = document.getElementById("robloxInput").value.trim();
-  if (!username) {
+  const inputValue = document.getElementById("robloxInput").value.trim();
+  if (!inputValue) {
     showToast("Enter a Roblox username to link.");
     return;
   }
@@ -171,7 +185,7 @@ document.getElementById("linkRobloxBtn").addEventListener("click", () => {
     return;
   }
 
-  users[userIndex].robloxUsername = username;
+  users[userIndex].robloxUsername = inputValue;
   saveUsers(users);
   setSession(users[userIndex]);
   renderDashboard(users[userIndex]);
